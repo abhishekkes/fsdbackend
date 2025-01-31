@@ -15,7 +15,7 @@ const myReadFile =async ()=>{
 
 const myWriteFile = async (data) => {
     try {
-        await fspromises.writeFile("./data.json", JSON.stringify(data),'utf-8');
+        await fspromises.writeFile("./data.json", JSON.stringify(data));
         console.log("Data saved successfully");
         return true
         
@@ -25,7 +25,18 @@ const myWriteFile = async (data) => {
     }
 }
 
+const createNewId =(arr) => {
+    const arrlength=arr.length;
+    if(arrlength>0){
+        return arr[arrlength-1].id+1;
+    }
+    else{
+        return 1;
+    }
+}
+
 module.exports = {
     myReadFile,
-    myWriteFile
+    myWriteFile,
+    createNewId
 };
