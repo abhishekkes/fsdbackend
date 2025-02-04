@@ -78,7 +78,7 @@ app.post("/products", async (req, res) => {
 
 app.get("/api/products", async (req, res) => {
     try {
-        const { q = "",size=4,page=1 } = req.query;  // Get search query from request
+        const { q = "",size=4,page=1, fields="-__v" } = req.query;  // Get search query from request
         console.log(q);
 
         let productQuery = Product.find(); // Initialize query
@@ -90,6 +90,7 @@ app.get("/api/products", async (req, res) => {
         productQuery.sort("name -title");
         productQuery.skip((page-1)*size);
         productQuery.limit(size);  // Limit the number of products per page
+        productQuery.fields="name";
         const products = await productQuery.exec();  // Execute the query
         res.json(products);
 
