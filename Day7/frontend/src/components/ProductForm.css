@@ -1,0 +1,50 @@
+.myform
+{
+    width: 40%;
+
+}
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  /* Labels */
+  label {
+    font-size: 16px;
+    font-weight: bold;
+    color: #444;
+        
+  }
+  
+  /* Input Fields */
+  input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-size: 14px;
+    transition: border-color 0.3s;
+  }
+  
+  input:focus {
+    border-color: #007bff;
+    outline: none;
+  }
+  
+  /* Submit Button */
+  button {
+    background-color: #007bff;
+    color: white;
+    font-size: 16px;
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  
+  button:hover {
+    background-color: #0056b3;
+  }
+  

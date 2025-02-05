@@ -1,0 +1,27 @@
+.card-container{
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    background-color: chartreuse;
+    justify-content: center;
+
+}
+
+.card{
+    background-color: lightgreen;
+    border: 2px solid black;
+    padding: 2rem;
+}
+
+h1{
+    text-align: center;
+    color: darkblue;
+    font-size: 4rem;
+    background-color: lightpink;
+}
+
+.card img{
+    width: 20rem;
+    height: 20rem;
+    object-fit: cover;
+}

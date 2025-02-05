@@ -1,0 +1,27 @@
+nav{
+    background-color: yellowgreen;
+    border: 4px solid green;
+    border-radius: 4px;
+    padding: 10px;
+    font-size: 30px;
+}
+ul{
+    display: flex;
+    list-style-type: none;
+    padding: 0;
+}
+
+ul li{
+    margin-right: 20px;
+    text-decoration: none;
+}
+
+ul li:hover{
+    background-color: lightblue;
+}
+
+ul li a{
+    color: white;
+    font-weight: 200;
+    text-decoration: none;
+}
