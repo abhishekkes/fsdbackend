@@ -11,6 +11,9 @@ const productSchema =new mongoose.Schema(
     }
 );
 
+
+
+
 const Product= mongoose.model('products',productSchema);
-console.log("Model created");
+console.log("Model Product created");
 module.exports=Product;    
