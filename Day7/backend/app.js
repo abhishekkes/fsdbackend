@@ -106,6 +106,46 @@ app.get("/api/products", async (req, res) => {
   }
 });
 
+app.post('/api/users', async (req, res) =>{
+  try{
+    const {otp,email,password} = req.body;
+    const otpdoc=await OTP.findOne({
+      createdAt: {$gte: Date.now()-(10*60*1000)},
+      email: email,
+    })
+    if(!otpdoc){
+      res.status(404);
+      res.json({status:"fail",message:"otp expired"})
+    }
+
+    else{
+      const hashotp=otpdoc.otp;
+      const isotpvalid=await bcrypt.compare(otp.toString(),hashotp);
+      if(isotpvalid){
+        const salt=await bcrypt.genSalt(14);
+        const hashedPassword=await bcrypt.hash(password,salt);
+        const newUser=await User.create({
+          email:email,
+          password: hashedPassword,
+        });
+        res.status(201);
+        res.json({ message: 'User registered successfully' });
+        return;
+      }
+      else{
+        res.status=401;
+        res.json({status:"fail",message:"incorrect otp"})
+      }
+    }
+    
+    res.json(otpdoc);
+  }
+  catch(error){
+    console.error(error);
+    res.status(500).send('Server Error');
+  }
+})
+
 app.post("/user/register", async (req, res) => {
   try {
     const newUser = req.body;
