@@ -1,4 +1,5 @@
 const express = require("express");
+require("dotenv").config();
 const { connectDB } = require("./config/dbConfig.js");
 const Product = require("./models/productModel.js");
 const User = require("./models/userModel.js");
@@ -9,14 +10,27 @@ const bcrypt = require("bcrypt");
 const nodemailer = require("nodemailer");
 const sendEmail = require("./utils/emailHelper.js");
 const OTP = require("./models/otpModel.js");
-
+const jwt = require("jsonwebtoken");
+const cookieparser = require("cookie-parser");
 app.use((req, res, next) => {
   console.log("request recieved...");
   next();
 });
 app.use(morgan());
-app.use(cors());
+app.use(
+  cors({
+    credentials: true,
+    origin: "http://localhost:5173",
+  })
+);
+
 app.use(express.json());
+
+// app.use(cors({origin: "http://localhost:5173"}));
+// app.use((req, res,next) => {
+
+// });
+
 app.post("/products", async (req, res) => {
   //   res.send("Server is working");
   try {
@@ -83,6 +97,160 @@ app.post("/products", async (req, res) => {
 //     }
 // });
 
+app.post("/api/users", async (req, res) => {
+  try {
+    const { otp, email, password } = req.body;
+    const otpdoc = await OTP.findOne({
+      createdAt: { $gte: Date.now() - 10 * 60 * 1000 },
+      email: email,
+    });
+    if (!otpdoc) {
+      res.status(404);
+      res.json({ status: "fail", message: "otp expired" });
+    } else {
+      const hashotp = otpdoc.otp;
+      const isotpvalid = await bcrypt.compare(otp.toString(), hashotp);
+      if (isotpvalid) {
+        const salt = await bcrypt.genSalt(14);
+        const hashedPassword = await bcrypt.hash(password, salt);
+        const newUser = await User.create({
+          email: email,
+          password: hashedPassword,
+        });
+        res.status(201);
+        res.json({ message: "User registered successfully" });
+        return;
+      } else {
+        res.status = 401;
+        res.json({ status: "fail", message: "incorrect otp" });
+      }
+    }
+
+    res.json(otpdoc);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send("Server Error");
+  }
+});
+
+app.post("/user/register", async (req, res) => {
+  try {
+    const newUser = req.body;
+    const salt = await bcrypt.genSalt(14);
+    const hashedPassword = await bcrypt.hash(newUser.password, salt);
+    newUser.password = hashedPassword;
+    console.log(newUser.password);
+    await User.create(newUser);
+    res.status(201);
+    res.json({ message: "User registered successfully" });
+  } catch (e) {
+    if (e.name === "ValidationError") {
+      res.status(400).json({
+        status: "fail",
+        message: "Validation failed",
+        errors: e.errors,
+      });
+    } else {
+      console.error(e);
+      res.status(500).send("Server Error");
+    }
+  }
+});
+
+app.post("/api/otps/", async (req, res) => {
+  try {
+    const email = req.body.email;
+    if (email && email.length > 0) {
+      const otp = Math.floor(Math.random() * 9000 + 1000);
+      const isEmailsent = await sendEmail(email, otp);
+      if (isEmailsent) {
+        const hashOtp = await bcrypt.hash(otp.toString(), 14);
+        await OTP.create({ email, otp: hashOtp });
+        res
+          .status(200)
+          .json({ status: "Success", message: "OTP sent successfully" });
+      } else {
+        res.status(500).json({ status: "Fail", message: "Failed to send OTP" });
+      }
+    } else {
+      res.status(400).json({ status: "Fail", message: "Email is required" });
+    }
+  } catch (error) {
+    console.log(error.message);
+    console.log(error._message);
+    console.log(error.name);
+    if (error.name == "ValidationError") {
+      res
+        .status(400)
+        .json({ status: "fail", message: "Data validation Failed" });
+    } else {
+      res.status(500).json({ status: "fail", message: "Server Error" });
+    }
+  }
+});
+
+app.post("/api/login", async (req, res) => {
+  try {
+    const { email, password: plainpassword } = req.body;
+    const currentuser = await User.findOne({ email: email });
+    if (currentuser) {
+      const { _id, name, password: hashedPassword } = currentuser;
+      const isPasswordCorrect = await bcrypt.compare(
+        plainpassword,
+        hashedPassword
+      );
+      if (isPasswordCorrect) {
+        const token = jwt.sign(
+          { email, name, _id },
+          "this_is_a_long_secret_key",
+          { expiresIn: "1h" }
+        );
+        console.log(token);
+        res.cookie("authorization", token, {
+          httpOnly: true,
+          sameSite: "none",
+          secure: true,
+        });
+        res.status(200);
+        res.json({ message: "Logged in successfully" });
+      } else {
+        res.status(401);
+        res.json({ status: "fail", message: "Incorrect password" });
+      }
+    } else {
+      res.status(404);
+      res.json({ status: "fail", message: "User not found" });
+    }
+  } catch (error) {
+    console.log(error);
+    console.log(error.code);
+    console.log(error.message);
+    res.status(500).send("Server Error");
+  }
+});
+app.use(cookieparser());
+
+app.use((req, res, next) => {
+  const { authorization } = req.cookies;
+  jwt.verify(authorization, "this_is_a_long_secret_key", (error, decoded) => {
+    if (error) {
+      res.status(401);
+      res.json({
+        status: "fail",
+        message: "Invalid token",
+      });
+      return;
+    }
+    req.userInfo = decoded;
+    next();
+  });
+});
+
+app.get("/api/isLoggedIn", (req, res) => {
+  res.status(200);
+  res.json({ status: "success", data: req.userInfo });
+});
+
 app.get("/api/products", async (req, res) => {
   try {
     const { q = "", size = 10, page = 1, fields = "-__v" } = req.query; // Get search query from request
@@ -106,103 +274,6 @@ app.get("/api/products", async (req, res) => {
   }
 });
 
-app.post('/api/users', async (req, res) =>{
-  try{
-    const {otp,email,password} = req.body;
-    const otpdoc=await OTP.findOne({
-      createdAt: {$gte: Date.now()-(10*60*1000)},
-      email: email,
-    })
-    if(!otpdoc){
-      res.status(404);
-      res.json({status:"fail",message:"otp expired"})
-    }
-
-    else{
-      const hashotp=otpdoc.otp;
-      const isotpvalid=await bcrypt.compare(otp.toString(),hashotp);
-      if(isotpvalid){
-        const salt=await bcrypt.genSalt(14);
-        const hashedPassword=await bcrypt.hash(password,salt);
-        const newUser=await User.create({
-          email:email,
-          password: hashedPassword,
-        });
-        res.status(201);
-        res.json({ message: 'User registered successfully' });
-        return;
-      }
-      else{
-        res.status=401;
-        res.json({status:"fail",message:"incorrect otp"})
-      }
-    }
-    
-    res.json(otpdoc);
-  }
-  catch(error){
-    console.error(error);
-    res.status(500).send('Server Error');
-  }
-})
-
-app.post("/user/register", async (req, res) => {
-  try {
-    const newUser = req.body;
-    const salt = await bcrypt.genSalt(14);
-    const hashedPassword = await bcrypt.hash(newUser.password, salt);
-    newUser.password = hashedPassword;
-    console.log(newUser.password);
-    await User.create(newUser);
-    res.status(201);
-    res.json({ message: "User registered successfully" });
-  } catch (e) {
-    if (e.name === "ValidationError") {
-      res
-        .status(400)
-        .json({
-          status: "fail",
-          message: "Validation failed",
-          errors: e.errors,
-        });
-    } else {
-      console.error(e);
-      res.status(500).send("Server Error");
-    }
-  }
-});
-
-app.post("/api/otps/", async (req, res) => {
-  try {
-    const email = req.body.email;
-    if (email && email.length > 0) {
-      const otp = Math.floor(Math.random() * 9000 + 1000);
-      const isEmailsent = await sendEmail(email, otp);
-      if (isEmailsent) {
-        const hashOtp = await bcrypt.hash(otp.toString(), 14);
-        await OTP.create({email, otp: hashOtp});
-        res
-          .status(200)
-          .json({ status: "Success", message: "OTP sent successfully" });
-      } else {
-        res.status(500).json({ status: "Fail", message: "Failed to send OTP" });
-      }
-    } else {
-      res.status(400).json({ status: "Fail", message: "Email is required" });
-    }
-  } catch (error) {
-    console.log(error.message);
-    console.log(error._message);
-    console.log(error.name);
-    if (error.name == "ValidationError") {
-      res
-        .status(400)
-        .json({ status: "fail", message: "Data validation Failed" });
-    } else {
-      res.status(500).json({ status: "fail", message: "Server Error" });
-    }
-  }
-});
 app.listen(8000, () => {
   console.log("Server is running on port 8000");
 });

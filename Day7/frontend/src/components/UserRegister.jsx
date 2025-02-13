@@ -1,36 +1,45 @@
+import React, { useState } from 'react';
+import axios from 'axios';
+
 const UserRegister = () => {
-    const handleRegister = async (e) => {
-      e.preventDefault()
-      const { username, email, password } = e.target
-      const data = { username, email, password }
-      const resp = await fetch('http://localhost:8000/user/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-      const result = await resp.json()
-      console.log(result);
-      alert("User Registered");
+  const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [password, setPassword] = useState('');
+  const [message, setMessage] = useState('');
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setMessage('');
+    
+    try {
+      const response = await axios.post('http://localhost:8000/api/users', { otp, email, password });
+      setMessage(response.data.message);
+    } catch (error) {
+      setMessage(error.response?.data?.message || 'Server Error');
     }
+  };
+
   return (
     <div>
-      <form onSubmit={handleRegister}>
-        <label>
-          Name:
-          <input type="text" name="name" />
-        </label>
-        <label>
-          Email:
-          <input type="email" name="email" />
-        </label>
-        <label>
-          Password:
-          <input type="password" name="password" />
-        </label>
-        <button type="submit">Add Product</button>
+      <h2>User Registration</h2>
+      <form onSubmit={handleSubmit}>
+        <div>
+          <label>Email:</label>
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        </div>
+        <div>
+          <label>OTP:</label>
+          <input type="text" value={otp} onChange={(e) => setOtp(e.target.value)} required />
+        </div>
+        <div>
+          <label>Password:</label>
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        </div>
+        <button type="submit">Register</button>
       </form>
+      {message && <p>{message}</p>}
     </div>
-  )
-}
+  );
+};
 
-export default UserRegister
+export default UserRegister;
